@@ -137,7 +137,7 @@ class VyayamAppWithSheets extends VyayamApp {
             <div class="modal-content">
                 <div class="modal-header">
                     <h3>Connect Google Sheets</h3>
-                    <button class="close-btn" onclick="this.closest('.modal').classList.remove('active')">
+                    <button class="close-btn" id="closeSetupModal">
                         <span class="material-icons">close</span>
                     </button>
                 </div>
@@ -155,19 +155,36 @@ class VyayamAppWithSheets extends VyayamApp {
                     <div style="margin-bottom: 20px;">
                         <small style="color: #666;">
                             Make sure your Google Sheet is publicly accessible or provide an API key.
-                            <a href="#" onclick="alert(this.getAttribute('data-instructions'))" 
-                               data-instructions="${this.sheetsAPI.getPublicAccessInstructions()}">
+                            <button type="button" id="showInstructions" style="background: none; border: none; color: #1976d2; text-decoration: underline; cursor: pointer;">
                                View instructions
-                            </a>
+                            </button>
                         </small>
                     </div>
-                    <button class="btn btn-primary" onclick="app.connectGoogleSheets()" style="width: 100%;">
+                    <button class="btn btn-primary" id="connectSheetButton" style="width: 100%;">
                         Connect Sheet
                     </button>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
+        
+        // Add event listeners after modal is created
+        const connectBtn = document.getElementById('connectSheetButton');
+        const closeBtn = document.getElementById('closeSetupModal');
+        const instructionsBtn = document.getElementById('showInstructions');
+        
+        connectBtn.addEventListener('click', () => this.connectGoogleSheets());
+        closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+        instructionsBtn.addEventListener('click', () => {
+            alert(this.sheetsAPI.getPublicAccessInstructions());
+        });
+        
+        // Also close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
     }
 
     async connectGoogleSheets() {

@@ -4,6 +4,12 @@
     
     // Wait for DOM to be ready
     function initializeApp() {
+        // Check if app is already initialized
+        if (window.app && typeof window.app === 'object') {
+            console.log('App already initialized');
+            return;
+        }
+        
         // Check if VyayamAppWithSheets is available (from sheets-api.js)
         if (typeof VyayamAppWithSheets !== 'undefined') {
             console.log('Initializing with Google Sheets integration');
@@ -13,6 +19,8 @@
             window.app = new VyayamApp();
         } else {
             console.error('No app class available for initialization');
+            // Retry after a short delay
+            setTimeout(initializeApp, 100);
             return;
         }
         
@@ -22,6 +30,9 @@
             syncBtn.style.display = 'flex';
             console.log('Sync button is visible');
         }
+        
+        // Expose app globally for debugging
+        window.vyayamApp = window.app;
     }
     
     // Initialize when DOM is ready
@@ -31,4 +42,7 @@
         // DOM is already ready
         initializeApp();
     }
+    
+    // Also try initialization after scripts load
+    window.addEventListener('load', initializeApp);
 })();
