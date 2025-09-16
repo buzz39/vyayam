@@ -4,6 +4,40 @@ class GoogleSheetsAPI {
         this.apiKey = null; // Will be set by user
         this.spreadsheetId = null; // Will be extracted from the sheet URL
         this.range = 'Sheet1!A:F'; // Adjust based on your sheet structure
+        
+        // Circuit breaker protection
+        this.failureCount = 0;
+        this.lastFailureTime = 0;
+        this.maxFailures = 3;
+        this.cooldownPeriod = 30000; // 30 seconds
+    }
+
+    // Check if we should allow requests (circuit breaker)
+    canMakeRequest() {
+        if (this.failureCount < this.maxFailures) {
+            return true;
+        }
+        
+        const now = Date.now();
+        if (now - this.lastFailureTime > this.cooldownPeriod) {
+            // Reset after cooldown period
+            this.failureCount = 0;
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // Record a failure
+    recordFailure() {
+        this.failureCount++;
+        this.lastFailureTime = Date.now();
+    }
+    
+    // Reset circuit breaker on success
+    recordSuccess() {
+        this.failureCount = 0;
+        this.lastFailureTime = 0;
     }
 
     // Extract spreadsheet ID from Google Sheets URL
@@ -28,6 +62,11 @@ class GoogleSheetsAPI {
             throw new Error('Spreadsheet ID must be set');
         }
 
+        // Check circuit breaker
+        if (!this.canMakeRequest()) {
+            throw new Error('Too many failed requests. Please wait before trying again.');
+        }
+
         // Build URL with or without API key
         let url = `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${this.range}`;
         if (this.apiKey) {
@@ -41,13 +80,17 @@ class GoogleSheetsAPI {
             const response = await fetch(url);
             
             if (!response.ok) {
+                this.recordFailure();
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const data = await response.json();
-            return this.parseWorkoutData(data.values);
+            const result = this.parseWorkoutData(data.values);
+            this.recordSuccess();
+            return result;
             
         } catch (error) {
+            this.recordFailure();
             console.error('Error fetching data from Google Sheets:', error);
             
             // Provide more helpful error messages
@@ -225,7 +268,7 @@ class VyayamAppWithSheets extends VyayamApp {
 
         try {
             this.sheetsAPI.setup(apiKey, sheetUrl);
-            await this.loadWorkoutDataFromSheets();
+            await this.loadWorkoutDataFromSheets(true);  // Mark as retry to prevent infinite loops
             document.getElementById('sheetsSetupModal').classList.remove('active');
             
             // Save connection details using user-specific storage
@@ -249,7 +292,7 @@ class VyayamAppWithSheets extends VyayamApp {
         }
     }
 
-    async loadWorkoutDataFromSheets() {
+    async loadWorkoutDataFromSheets(isRetry = false) {
         this.showLoading(true);
         
         try {
@@ -259,8 +302,18 @@ class VyayamAppWithSheets extends VyayamApp {
             this.showDaySelector();
         } catch (error) {
             console.error('Error loading from sheets:', error);
-            // Fall back to static data
-            await this.loadWorkoutData();
+            this.showLoading(false);
+            
+            // If this is already a retry or if it's a 403 error, don't retry - go straight to static data
+            if (isRetry || error.message.includes('Access denied') || error.message.includes('403')) {
+                console.log('Sheets access failed, clearing connection and using static data');
+                this.clearUserSheetsConnection();
+                await this.loadStaticData();
+                return;
+            }
+            
+            // Fall back to static data without retrying sheets
+            await this.loadStaticData();
         }
     }
 
@@ -273,15 +326,20 @@ class VyayamAppWithSheets extends VyayamApp {
             try {
                 console.log('Found saved Google Sheets connection, attempting to connect...');
                 this.sheetsAPI.setup(savedApiKey, savedUrl);
-                await this.loadWorkoutDataFromSheets();
+                await this.loadWorkoutDataFromSheets(false);
                 return;
             } catch (error) {
                 console.error('Error with saved sheet connection:', error);
-                // Clear invalid saved credentials
+                // Clear invalid saved credentials and fall through to static data
                 this.clearUserSheetsConnection();
             }
         }
 
+        // Fall back to static data loading
+        await this.loadStaticData();
+    }
+    
+    async loadStaticData() {
         // Fall back to original static data loading
         console.log('No saved sheets connection, using static data');
         await super.loadWorkoutData();
