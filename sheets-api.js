@@ -141,6 +141,14 @@ class VyayamAppWithSheets extends VyayamApp {
         this.setupSheetsIntegration();
     }
 
+    async init() {
+        // First ensure our sheets integration is set up
+        this.setupEventListeners();
+        await this.loadWorkoutData(); // Now this will have sheetsAPI available
+        this.setupInstallPrompt();
+        this.initDB();
+    }
+
     setupSheetsIntegration() {
         // Add setup UI for Google Sheets
         this.createSheetsSetupModal();
@@ -220,9 +228,8 @@ class VyayamAppWithSheets extends VyayamApp {
             await this.loadWorkoutDataFromSheets();
             document.getElementById('sheetsSetupModal').classList.remove('active');
             
-            // Save connection details
-            localStorage.setItem('vyayam_sheet_url', sheetUrl);
-            if (apiKey) localStorage.setItem('vyayam_api_key', apiKey);
+            // Save connection details using user-specific storage
+            this.setUserSheetsConnection(apiKey, sheetUrl);
             
             alert('Successfully connected to Google Sheets!');
         } catch (error) {
@@ -258,9 +265,9 @@ class VyayamAppWithSheets extends VyayamApp {
     }
 
     async loadWorkoutData() {
-        // Check if we have saved sheet connection
-        const savedUrl = localStorage.getItem('vyayam_sheet_url');
-        const savedApiKey = localStorage.getItem('vyayam_api_key');
+        // Get user-specific Google Sheets configuration
+        const savedUrl = this.getUserSheetsUrl();
+        const savedApiKey = this.getUserApiKey();
 
         if (savedUrl) {
             try {
@@ -271,14 +278,74 @@ class VyayamAppWithSheets extends VyayamApp {
             } catch (error) {
                 console.error('Error with saved sheet connection:', error);
                 // Clear invalid saved credentials
-                localStorage.removeItem('vyayam_sheet_url');
-                localStorage.removeItem('vyayam_api_key');
+                this.clearUserSheetsConnection();
             }
         }
 
         // Fall back to original static data loading
         console.log('No saved sheets connection, using static data');
         await super.loadWorkoutData();
+        
+        // Load user-specific progress after workout data is loaded
+        await this.loadUserProgress();
+    }
+
+    async loadUserProgress() {
+        // If we have a current day selected and user context, load the progress
+        if (this.currentDay && this.currentUser) {
+            const progress = await this.loadProgress(this.currentDay);
+            if (progress) {
+                this.completedExercises = new Set(progress.completedExercises);
+                // Re-render workout view if visible
+                const workoutView = document.getElementById('workoutView');
+                if (workoutView && workoutView.style.display !== 'none') {
+                    this.renderWorkout();
+                }
+            }
+        }
+    }
+
+    // Helper methods for user-specific storage
+    getUserSheetsUrl() {
+        if (this.currentUser) {
+            return this.currentUser.sheetsUrl;
+        }
+        // Fallback to old localStorage method for backward compatibility
+        return localStorage.getItem('vyayam_sheet_url');
+    }
+
+    getUserApiKey() {
+        if (this.currentUser) {
+            return this.currentUser.apiKey;
+        }
+        // Fallback to old localStorage method for backward compatibility
+        return localStorage.getItem('vyayam_api_key');
+    }
+
+    setUserSheetsConnection(apiKey, sheetsUrl) {
+        if (this.currentUser && this.userManager) {
+            this.currentUser.sheetsUrl = sheetsUrl;
+            this.currentUser.apiKey = apiKey;
+            this.userManager.updateUser(this.currentUser);
+            return true;
+        }
+        // Fallback to old localStorage method
+        localStorage.setItem('vyayam_api_key', apiKey || '');
+        localStorage.setItem('vyayam_sheet_url', sheetsUrl || '');
+        return true;
+    }
+
+    clearUserSheetsConnection() {
+        if (this.currentUser && this.userManager) {
+            this.currentUser.sheetsUrl = null;
+            this.currentUser.apiKey = null;
+            this.userManager.updateUser(this.currentUser);
+            return true;
+        }
+        // Fallback to old localStorage method
+        localStorage.removeItem('vyayam_api_key');
+        localStorage.removeItem('vyayam_sheet_url');
+        return true;
     }
 
     // Add method to show sheets setup

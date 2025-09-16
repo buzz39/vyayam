@@ -22,6 +22,9 @@ class VyayamApp {
         document.getElementById('backBtn').addEventListener('click', () => this.showDaySelector());
         document.getElementById('refreshBtn').addEventListener('click', () => this.loadWorkoutData());
         
+        // Settings button
+        document.getElementById('settingsBtn').addEventListener('click', () => this.showSettings());
+        
         // Google Sheets sync button
         const syncBtn = document.getElementById('connectSheetsBtn');
         if (syncBtn) {
@@ -46,6 +49,23 @@ class VyayamApp {
         document.getElementById('closeModalBtn').addEventListener('click', () => this.closeModal());
         document.getElementById('exerciseModal').addEventListener('click', (e) => {
             if (e.target === e.currentTarget) this.closeModal();
+        });
+
+        // Settings modal controls
+        document.getElementById('closeSettingsBtn').addEventListener('click', () => this.closeSettings());
+        document.getElementById('settingsModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) this.closeSettings();
+        });
+
+        // Settings actions
+        document.getElementById('switchUserBtn').addEventListener('click', () => this.switchUser());
+        document.getElementById('editProfileBtn').addEventListener('click', () => this.editProfile());
+        document.getElementById('exportDataBtn').addEventListener('click', () => this.exportUserData());
+        document.getElementById('manageSheetsBtn').addEventListener('click', () => {
+            this.closeSettings();
+            if (typeof this.showSheetsSetup === 'function') {
+                this.showSheetsSetup();
+            }
         });
 
         // Workout controls
@@ -177,10 +197,54 @@ class VyayamApp {
         };
     }
 
+    async loadProgress(day, date = null) {
+        const targetDate = date || new Date().toISOString().split('T')[0];
+        const userId = this.currentUser ? this.currentUser.id : 'default';
+        
+        // Try to load from IndexedDB first
+        if (this.db) {
+            try {
+                const transaction = this.db.transaction(['progress'], 'readonly');
+                const store = transaction.objectStore('progress');
+                const progressData = await store.get(`${userId}_${targetDate}`);
+                
+                if (progressData && progressData.day === day) {
+                    return {
+                        completedExercises: progressData.completedExercises || [],
+                        timestamp: progressData.timestamp
+                    };
+                }
+            } catch (error) {
+                console.error('Error loading progress from IndexedDB:', error);
+            }
+        }
+        
+        // Try to load from user object
+        if (this.currentUser && this.currentUser.workoutProgress) {
+            const dayProgress = this.currentUser.workoutProgress[targetDate];
+            if (dayProgress && dayProgress.day === day) {
+                return {
+                    completedExercises: dayProgress.completedExercises || [],
+                    timestamp: dayProgress.timestamp
+                };
+            }
+        }
+        
+        return null;
+    }
+
     selectDay(day) {
         this.currentDay = day;
         this.currentExercise = 0;
         this.completedExercises.clear();
+        
+        // Load user-specific progress for this day
+        this.loadProgress(day).then(progress => {
+            if (progress) {
+                this.completedExercises = new Set(progress.completedExercises);
+                this.renderWorkout(); // Re-render with loaded progress
+            }
+        });
         
         this.showWorkoutView();
         this.renderWorkout();
@@ -577,15 +641,189 @@ class VyayamApp {
         if (!this.db) return;
 
         const today = new Date().toISOString().split('T')[0];
+        const userId = this.currentUser ? this.currentUser.id : 'default';
         const transaction = this.db.transaction(['progress'], 'readwrite');
         const store = transaction.objectStore('progress');
         
         await store.put({
+            id: `${userId}_${today}`, // User-specific ID
+            userId: userId,
             date: today,
             day: this.currentDay,
             completedExercises: Array.from(this.completedExercises),
             timestamp: Date.now()
         });
+
+        // Also save to user object if available
+        if (this.currentUser && this.userManager) {
+            this.currentUser.workoutProgress = this.currentUser.workoutProgress || {};
+            this.currentUser.workoutProgress[today] = {
+                day: this.currentDay,
+                completedExercises: Array.from(this.completedExercises),
+                timestamp: Date.now()
+            };
+            this.userManager.updateUser(this.currentUser);
+        }
+    }
+
+    // Settings Modal Methods
+    showSettings() {
+        this.updateSettingsDisplay();
+        document.getElementById('settingsModal').classList.add('active');
+    }
+
+    closeSettings() {
+        document.getElementById('settingsModal').classList.remove('active');
+    }
+
+    updateSettingsDisplay() {
+        if (this.currentUser) {
+            // Update user profile display
+            document.getElementById('profileAvatar').textContent = this.currentUser.avatar;
+            document.getElementById('profileName').textContent = this.currentUser.name;
+            
+            // Calculate and show stats
+            const progressCount = this.currentUser.workoutProgress ? 
+                Object.keys(this.currentUser.workoutProgress).length : 0;
+            const statsText = progressCount > 0 ? 
+                `${progressCount} workout${progressCount !== 1 ? 's' : ''} completed` : 
+                'No workout data yet';
+            document.getElementById('profileStats').textContent = statsText;
+
+            // Update Google Sheets status
+            const hasSheets = this.currentUser.sheetsUrl;
+            const statusIcon = document.getElementById('sheetsStatusIcon');
+            const statusText = document.getElementById('sheetsStatusText');
+            
+            if (hasSheets) {
+                statusIcon.textContent = 'cloud_done';
+                statusIcon.className = 'material-icons connected';
+                statusText.textContent = 'Connected to Google Sheets';
+            } else {
+                statusIcon.textContent = 'cloud_off';
+                statusIcon.className = 'material-icons disconnected';
+                statusText.textContent = 'Not connected';
+            }
+        }
+    }
+
+    switchUser() {
+        this.closeSettings();
+        if (window.userManager) {
+            window.userManager.showUserSelection((selectedUser) => {
+                console.log('Switching to user:', selectedUser.name);
+                
+                // Update header UI
+                const userAvatar = document.getElementById('currentUserAvatar');
+                const userName = document.getElementById('currentUserName');
+                if (userAvatar && userName) {
+                    userAvatar.textContent = selectedUser.avatar;
+                    userName.textContent = selectedUser.name;
+                }
+                
+                // Update app context
+                this.currentUser = selectedUser;
+                this.userManager = window.userManager.userManager;
+                
+                // Reload workout data with new user context
+                this.loadWorkoutData();
+                
+                // Go back to day selector
+                this.showDaySelector();
+            });
+        }
+    }
+
+    editProfile() {
+        if (!this.currentUser || !this.userManager) return;
+        
+        // Create edit profile modal (simplified version)
+        const editModal = document.createElement('div');
+        editModal.className = 'create-user-modal';
+        editModal.innerHTML = `
+            <div class="create-user-content">
+                <h3>Edit Profile</h3>
+                <div class="form-group">
+                    <label>Name:</label>
+                    <input type="text" id="edit-user-name" value="${this.currentUser.name}" maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label>Avatar:</label>
+                    <div class="avatar-selection" id="edit-avatar-selection">
+                        ${UserManager.getAvatarOptions().map(avatar => 
+                            `<span class="avatar-option ${avatar === this.currentUser.avatar ? 'selected' : ''}" data-avatar="${avatar}">${avatar}</span>`
+                        ).join('')}
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button id="btn-cancel-edit">Cancel</button>
+                    <button id="btn-save-edit" class="primary">Save Changes</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(editModal);
+
+        let selectedAvatar = this.currentUser.avatar;
+        
+        // Avatar selection
+        document.querySelectorAll('.avatar-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.avatar-option').forEach(o => o.classList.remove('selected'));
+                option.classList.add('selected');
+                selectedAvatar = option.dataset.avatar;
+            });
+        });
+
+        // Cancel button
+        document.getElementById('btn-cancel-edit').addEventListener('click', () => {
+            editModal.remove();
+        });
+
+        // Save button
+        document.getElementById('btn-save-edit').addEventListener('click', () => {
+            const name = document.getElementById('edit-user-name').value.trim();
+            if (name) {
+                this.currentUser.name = name;
+                this.currentUser.avatar = selectedAvatar;
+                this.userManager.updateUser(this.currentUser);
+                
+                // Update UI
+                const userAvatar = document.getElementById('currentUserAvatar');
+                const userName = document.getElementById('currentUserName');
+                if (userAvatar && userName) {
+                    userAvatar.textContent = selectedAvatar;
+                    userName.textContent = name;
+                }
+                
+                editModal.remove();
+                this.updateSettingsDisplay();
+            }
+        });
+    }
+
+    exportUserData() {
+        if (!this.currentUser) return;
+        
+        const userData = {
+            ...this.currentUser,
+            exportDate: new Date().toISOString(),
+            appVersion: '2.0'
+        };
+        
+        const dataStr = JSON.stringify(userData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `vyayam-${this.currentUser.name}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        alert('User data exported successfully!');
     }
 }
 

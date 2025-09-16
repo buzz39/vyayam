@@ -37,6 +37,11 @@
                     <h1>Vyayam</h1>
                 </div>
                 <div class="header-actions">
+                    <div class="user-switcher" id="userSwitcher" title="Switch User" style="display: none;">
+                        <span class="current-user-avatar" id="currentUserAvatar">💪</span>
+                        <span class="current-user-name" id="currentUserName">User</span>
+                        <span class="user-switch-icon">▼</span>
+                    </div>
                     <button class="icon-btn" id="refreshBtn" title="Refresh Data">
                         <span class="material-icons">refresh</span>
                     </button>
@@ -164,6 +169,58 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Settings Modal -->
+            <div class="modal" id="settingsModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Settings</h3>
+                        <button class="close-btn" id="closeSettingsBtn">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- User Profile Section -->
+                        <div class="settings-section">
+                            <h4>User Profile</h4>
+                            <div class="user-profile-display" id="userProfileDisplay">
+                                <div class="profile-avatar" id="profileAvatar">💪</div>
+                                <div class="profile-info">
+                                    <div class="profile-name" id="profileName">User Name</div>
+                                    <div class="profile-stats" id="profileStats">No workout data yet</div>
+                                </div>
+                                <button class="btn btn-secondary" id="editProfileBtn">Edit Profile</button>
+                            </div>
+                            <div class="profile-actions">
+                                <button class="btn btn-primary" id="switchUserBtn">Switch User</button>
+                                <button class="btn btn-secondary" id="exportDataBtn">Export Data</button>
+                            </div>
+                        </div>
+
+                        <!-- Google Sheets Section -->
+                        <div class="settings-section">
+                            <h4>Google Sheets Integration</h4>
+                            <div class="sheets-status" id="sheetsStatus">
+                                <div class="status-indicator">
+                                    <span class="material-icons" id="sheetsStatusIcon">cloud_off</span>
+                                    <span id="sheetsStatusText">Not connected</span>
+                                </div>
+                                <button class="btn btn-primary" id="manageSheetsBtn">Manage Connection</button>
+                            </div>
+                        </div>
+
+                        <!-- App Information -->
+                        <div class="settings-section">
+                            <h4>About Vyayam</h4>
+                            <div class="app-info">
+                                <p>Your personal workout companion</p>
+                                <p>Version: 2.0 with User Sessions</p>
+                                <p>Built as a Progressive Web App</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
 
         <!-- Bottom Navigation -->
@@ -199,6 +256,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="user-manager.js"></script>
     <script src="app.js"></script>
     <script src="sheets-api.js"></script>
     <script src="init.js"></script>
