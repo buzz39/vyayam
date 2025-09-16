@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+</head>
+<body>
+    <canvas id="iconCanvas" width="512" height="512"></canvas>
+    <script>
+        // Generate PWA icons
+        const canvas = document.getElementById('iconCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Create gradient background
+        const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+        gradient.addColorStop(0, '#1976d2');
+        gradient.addColorStop(1, '#1565c0');
+        
+        // Fill background
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 512, 512);
+        
+        // Add rounded corners
+        ctx.globalCompositeOperation = 'destination-in';
+        ctx.beginPath();
+        ctx.roundRect(0, 0, 512, 512, 60);
+        ctx.fill();
+        
+        ctx.globalCompositeOperation = 'source-over';
+        
+        // Draw fitness icon (dumbbell)
+        ctx.fillStyle = 'white';
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 24;
+        
+        // Dumbbell shape
+        ctx.beginPath();
+        // Left weight
+        ctx.roundRect(50, 180, 80, 152, 20);
+        ctx.fill();
+        
+        // Right weight  
+        ctx.roundRect(382, 180, 80, 152, 20);
+        ctx.fill();
+        
+        // Bar
+        ctx.beginPath();
+        ctx.roundRect(130, 236, 252, 40, 20);
+        ctx.fill();
+        
+        // Center grip
+        ctx.strokeStyle = '#1565c0';
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(200, 256);
+        ctx.lineTo(312, 256);
+        ctx.stroke();
+        
+        // Save as 512x512
+        canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'icon-512x512.png';
+            a.click();
+        });
+    </script>
+</body>
+</html>

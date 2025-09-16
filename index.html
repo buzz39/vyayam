@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vyayam - Your Fitness Companion</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1976d2">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Vyayam">
+    <meta name="description" content="Your personal fitness companion with guided workouts">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="icons/icon-192x192.svg">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.svg">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- App Shell -->
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="material-icons">fitness_center</span>
+                    <h1>Vyayam</h1>
+                </div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="refreshBtn" title="Refresh Data">
+                        <span class="material-icons">refresh</span>
+                    </button>
+                    <button class="icon-btn" id="settingsBtn" title="Settings">
+                        <span class="material-icons">settings</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Loading State -->
+            <div class="loading" id="loadingState">
+                <div class="loading-spinner"></div>
+                <p>Loading your workout plan...</p>
+            </div>
+
+            <!-- Day Selection -->
+            <section class="day-selector" id="daySelector" style="display: none;">
+                <h2>Select Your Workout Day</h2>
+                <div class="day-grid">
+                    <div class="day-card" data-day="1">
+                        <div class="day-number">1</div>
+                        <div class="day-info">
+                            <h3>Chest + Triceps</h3>
+                            <p>9 exercises</p>
+                        </div>
+                    </div>
+                    <div class="day-card" data-day="2">
+                        <div class="day-number">2</div>
+                        <div class="day-info">
+                            <h3>Back + Biceps</h3>
+                            <p>8 exercises</p>
+                        </div>
+                    </div>
+                    <div class="day-card" data-day="3">
+                        <div class="day-number">3</div>
+                        <div class="day-info">
+                            <h3>Shoulders + Abs</h3>
+                            <p>8 exercises</p>
+                        </div>
+                    </div>
+                    <div class="day-card" data-day="4">
+                        <div class="day-number">4</div>
+                        <div class="day-info">
+                            <h3>Legs + Abs</h3>
+                            <p>7 exercises</p>
+                        </div>
+                    </div>
+                    <div class="day-card" data-day="5">
+                        <div class="day-number">5</div>
+                        <div class="day-info">
+                            <h3>Chest + Biceps</h3>
+                            <p>6 exercises</p>
+                        </div>
+                    </div>
+                    <div class="day-card" data-day="6">
+                        <div class="day-number">6</div>
+                        <div class="day-info">
+                            <h3>Back + Triceps</h3>
+                            <p>5 exercises</p>
+                        </div>
+                    </div>
+                    <div class="day-card rest-day" data-day="7">
+                        <div class="day-number">7</div>
+                        <div class="day-info">
+                            <h3>Rest / Active Recovery</h3>
+                            <p>Recovery activities</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Workout View -->
+            <section class="workout-view" id="workoutView" style="display: none;">
+                <div class="workout-header">
+                    <button class="back-btn" id="backBtn">
+                        <span class="material-icons">arrow_back</span>
+                    </button>
+                    <div class="workout-info">
+                        <h2 id="workoutTitle">Day 1 - Chest + Triceps</h2>
+                        <p id="workoutProgress">0 of 9 exercises completed</p>
+                    </div>
+                </div>
+
+                <div class="exercise-container" id="exerciseContainer">
+                    <!-- Exercises will be dynamically loaded here -->
+                </div>
+
+                <div class="workout-controls">
+                    <button class="btn btn-primary" id="startWorkoutBtn">
+                        <span class="material-icons">play_arrow</span>
+                        Start Workout
+                    </button>
+                </div>
+            </section>
+
+            <!-- Exercise Detail Modal -->
+            <div class="modal" id="exerciseModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 id="modalExerciseName">Exercise Name</h3>
+                        <button class="close-btn" id="closeModalBtn">
+                            <span class="material-icons">close</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="video-container" id="videoContainer">
+                            <!-- YouTube video will be embedded here -->
+                        </div>
+                        <div class="exercise-details">
+                            <div class="sets-reps" id="setsRepsInfo">
+                                <span class="material-icons">fitness_center</span>
+                                <span>Loading...</span>
+                            </div>
+                            <button class="btn btn-success" id="markCompleteBtn">
+                                <span class="material-icons">check</span>
+                                Mark Complete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" data-view="workout">
+                <span class="material-icons">fitness_center</span>
+                <span>Workout</span>
+            </button>
+            <button class="nav-item" data-view="progress">
+                <span class="material-icons">trending_up</span>
+                <span>Progress</span>
+            </button>
+            <button class="nav-item" data-view="profile">
+                <span class="material-icons">person</span>
+                <span>Profile</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Install Prompt -->
+    <div class="install-prompt" id="installPrompt" style="display: none;">
+        <div class="install-content">
+            <span class="material-icons">get_app</span>
+            <div class="install-text">
+                <h3>Install Vyayam</h3>
+                <p>Get the full app experience</p>
+            </div>
+            <button class="btn btn-primary" id="installBtn">Install</button>
+            <button class="close-btn" id="dismissInstallBtn">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+    <script>
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(registrationError => {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
