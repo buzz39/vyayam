@@ -43,6 +43,9 @@
                     <button class="icon-btn" id="settingsBtn" title="Settings">
                         <span class="material-icons">settings</span>
                     </button>
+                    <button class="icon-btn" id="connectSheetsBtn" title="Connect Google Sheets">
+                        <span class="material-icons">cloud_sync</span>
+                    </button>
                 </div>
             </div>
         </header>
@@ -196,8 +199,12 @@
     </div>
 
     <!-- Scripts -->
+    <script src="sheets-api.js"></script>
     <script src="app.js"></script>
     <script>
+        // Initialize the app with Google Sheets integration
+        const app = new VyayamAppWithSheets();
+        
         // Register Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
