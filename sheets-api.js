@@ -24,11 +24,18 @@ class GoogleSheetsAPI {
 
     // Fetch workout data from Google Sheets
     async fetchWorkoutData() {
-        if (!this.apiKey || !this.spreadsheetId) {
-            throw new Error('API key and spreadsheet ID must be set');
+        if (!this.spreadsheetId) {
+            throw new Error('Spreadsheet ID must be set');
         }
 
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${this.range}?key=${this.apiKey}`;
+        // Build URL with or without API key
+        let url = `https://sheets.googleapis.com/v4/spreadsheets/${this.spreadsheetId}/values/${this.range}`;
+        if (this.apiKey) {
+            url += `?key=${this.apiKey}`;
+        } else {
+            // For public sheets, try without API key first
+            console.log('Attempting to access public Google Sheet without API key');
+        }
         
         try {
             const response = await fetch(url);
@@ -42,7 +49,17 @@ class GoogleSheetsAPI {
             
         } catch (error) {
             console.error('Error fetching data from Google Sheets:', error);
-            throw error;
+            
+            // Provide more helpful error messages
+            if (error.message.includes('status: 403')) {
+                throw new Error('Access denied. Please make sure your Google Sheet is publicly accessible or provide a valid API key.');
+            } else if (error.message.includes('status: 404')) {
+                throw new Error('Google Sheet not found. Please check the URL and make sure the sheet exists.');
+            } else if (error.message.includes('status: 400')) {
+                throw new Error('Invalid request. Please check your Google Sheets URL format.');
+            }
+            
+            throw new Error(`Failed to fetch data from Google Sheets: ${error.message}`);
         }
     }
 
@@ -146,11 +163,13 @@ class VyayamAppWithSheets extends VyayamApp {
                         <label for="sheetUrl">Google Sheets URL:</label>
                         <input type="url" id="sheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..." 
                                style="width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px;">
+                        <small style="color: #666;">Paste the full URL of your Google Sheet</small>
                     </div>
                     <div style="margin-bottom: 20px;">
                         <label for="apiKey">API Key (optional for public sheets):</label>
-                        <input type="text" id="apiKey" placeholder="Your Google Sheets API key"
+                        <input type="text" id="apiKey" placeholder="Your Google Sheets API key (optional)"
                                style="width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px;">
+                        <small style="color: #666;">Leave empty if your sheet is publicly accessible</small>
                     </div>
                     <div style="margin-bottom: 20px;">
                         <small style="color: #666;">
@@ -208,7 +227,18 @@ class VyayamAppWithSheets extends VyayamApp {
             alert('Successfully connected to Google Sheets!');
         } catch (error) {
             console.error('Error connecting to Google Sheets:', error);
-            alert('Failed to connect to Google Sheets. Please check your URL and try again.');
+            
+            // Show user-friendly error message
+            let errorMessage = 'Failed to connect to Google Sheets.';
+            if (error.message.includes('Invalid Google Sheets URL')) {
+                errorMessage = 'Invalid Google Sheets URL. Please check the URL format.';
+            } else if (error.message.includes('Access denied')) {
+                errorMessage = 'Access denied. Please make sure your sheet is publicly accessible:\n\n1. Open your Google Sheet\n2. Click "Share"\n3. Change to "Anyone with the link"\n4. Set permission to "Viewer"';
+            } else {
+                errorMessage = `Connection failed: ${error.message}`;
+            }
+            
+            alert(errorMessage);
         }
     }
 
@@ -234,15 +264,20 @@ class VyayamAppWithSheets extends VyayamApp {
 
         if (savedUrl) {
             try {
+                console.log('Found saved Google Sheets connection, attempting to connect...');
                 this.sheetsAPI.setup(savedApiKey, savedUrl);
                 await this.loadWorkoutDataFromSheets();
                 return;
             } catch (error) {
                 console.error('Error with saved sheet connection:', error);
+                // Clear invalid saved credentials
+                localStorage.removeItem('vyayam_sheet_url');
+                localStorage.removeItem('vyayam_api_key');
             }
         }
 
         // Fall back to original static data loading
+        console.log('No saved sheets connection, using static data');
         await super.loadWorkoutData();
     }
 
