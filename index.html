@@ -199,12 +199,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="sheets-api.js"></script>
     <script src="app.js"></script>
+    <script src="sheets-api.js"></script>
+    <script src="init.js"></script>
     <script>
-        // Initialize the app with Google Sheets integration
-        const app = new VyayamAppWithSheets();
-        
         // Register Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

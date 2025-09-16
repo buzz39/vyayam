@@ -21,13 +21,18 @@ class VyayamApp {
         // Navigation
         document.getElementById('backBtn').addEventListener('click', () => this.showDaySelector());
         document.getElementById('refreshBtn').addEventListener('click', () => this.loadWorkoutData());
-        document.getElementById('connectSheetsBtn')?.addEventListener('click', () => {
-            if (this.showSheetsSetup) {
-                this.showSheetsSetup();
-            } else {
-                alert('Google Sheets integration not available. Using static data.');
-            }
-        });
+        
+        // Google Sheets sync button
+        const syncBtn = document.getElementById('connectSheetsBtn');
+        if (syncBtn) {
+            syncBtn.addEventListener('click', () => {
+                if (typeof this.showSheetsSetup === 'function') {
+                    this.showSheetsSetup();
+                } else {
+                    alert('Google Sheets integration not available. Using static data.');
+                }
+            });
+        }
         
         // Day selection
         document.querySelectorAll('.day-card').forEach(card => {
@@ -584,5 +589,5 @@ class VyayamApp {
     }
 }
 
-// Initialize the app
-const app = new VyayamApp();
+// Initialize the app - will be replaced by sheets-api.js if loaded
+let app;

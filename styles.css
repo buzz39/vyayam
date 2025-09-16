@@ -98,6 +98,14 @@ body {
     background: rgba(255, 255, 255, 0.2);
 }
 
+.icon-btn[id="connectSheetsBtn"] {
+    background: rgba(76, 175, 80, 0.2);
+}
+
+.icon-btn[id="connectSheetsBtn"]:hover {
+    background: rgba(76, 175, 80, 0.3);
+}
+
 /* Main Content */
 .main-content {
     flex: 1;

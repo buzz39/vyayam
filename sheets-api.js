@@ -234,6 +234,3 @@ class VyayamAppWithSheets extends VyayamApp {
         document.getElementById('sheetsSetupModal').classList.add('active');
     }
 }
-
-// Replace the original app initialization
-// const app = new VyayamAppWithSheets();
